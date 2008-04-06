@@ -1,16 +1,20 @@
 require 'yaml'
+require 'find'
+require 'net/ftp'
+
+Debug = true
 
 class PhotoSorter
 
   attr_accessor :photo_data
 
-  def initialize
+  def initialize(yaml_file)
     @photo_data = nil
+    @yaml_file = yaml_file
     @extension = 'jpg'
   end
 
-  def get_photo_data(yaml_file)
-    @yaml_file = yaml_file
+  def get_photo_data
     photo_yaml_data = File.open(@yaml_file) { |f| f.read }
     @photo_data = YAML.load(photo_yaml_data)
   end
@@ -23,7 +27,8 @@ class PhotoSorter
 
   def expand_photo_names
     expanded_photo_names = {}
-    @photo_data.each do |dir_name, photo_data_set|
+    photo_data ||= get_photo_data
+    photo_data.each do |dir_name, photo_data_set|
       photo_data_set.each do |photos|
         # puts "XXX Photos: #{photos.inspect}"
         prefix = photos.fetch('with', nil)
@@ -47,4 +52,81 @@ end
 # uploads these files through an FTP connection
 class PhotoUploader
 
+  def initialize(config_file, files)
+    config_params = get_config_params(config_file)
+    @server = config_params['server']
+    @user = config_params['login']
+    @password = config_params['password']
+    @size = config_params['size']
+    @mode = config_params['mode']
+    @files_to_upload = files
+  end
+
+  def get_config_params(config_file)
+    config_data = File.open(config_file) { |f| f.read }
+    return YAML.load(config_data)
+  end
+
+  def connect
+    puts "Connecting to FTP server..."
+    ftp = Net::FTP.new(@server)
+    puts "Logging in..."
+    ftp.login(@user, @password)
+    return ftp
+  end
+
+  def get_remote_dir(num_copies)
+    "#{@size}-#{@mode}-#{num_copies}"
+  end
+
+  def make_remote_dir(ftp, num_copies)
+    ftp.mkdir(get_remote_dir(num_copies))
+  end
+
+  def put_photo(ftp, file_name)
+    ftp.putbinaryfile(file_name) do
+      # puts "Transferring photo"
+    end
+  end
+
+  def get_short_dir_listing(ftp)
+    ftp.ls.collect { |f| f.split.last }
+  end
+
+  def basename(file_name)
+    file_name.split('/').last
+  end
+
+  def put_photos(ftp)
+    @files_to_upload.each do |num_copies, files|
+      remote_dirs = ftp.ls
+      dir_for_photos = get_remote_dir(num_copies)
+      make_remote_dir(ftp, num_copies) unless get_short_dir_listing(ftp).include?(dir_for_photos)
+      ftp.chdir(dir_for_photos)
+      files.each do |file_name|
+        if get_short_dir_listing(ftp).include?(basename(file_name))
+          puts "Skipping existing #{file_name}"
+        else
+          puts "Starting to transfer #{file_name}"
+          put_photo(ftp, file_name) unless Debug
+        end
+      end
+      ftp.chdir('..')
+    end
+  end
+
+  def transfer
+    ftp = connect
+    put_photos(ftp)
+    puts "All files transferred, closing connection"
+    ftp.close
+  end
+
+end
+
+if __FILE__ == $0
+  photosorter = PhotoSorter.new(ARGV[0])
+  # puts "XXX #{photosorter.expand_photo_names.inspect}"
+  photo_uploader = PhotoUploader.new(ARGV[1], photosorter.expand_photo_names)
+  photo_uploader.transfer
 end
