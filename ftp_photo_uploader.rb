@@ -52,14 +52,14 @@ end
 # uploads these files through an FTP connection
 class PhotoUploader
 
-  def initialize(config_file, files)
+  def initialize(config_file, photos_config_file)
     config_params = get_config_params(config_file)
     @server = config_params['server']
     @user = config_params['login']
     @password = config_params['password']
     @size = config_params['size']
     @mode = config_params['mode']
-    @files_to_upload = files
+    @photosorter = PhotoSorter.new(photos_config_file)
   end
 
   def get_config_params(config_file)
@@ -98,7 +98,7 @@ class PhotoUploader
   end
 
   def put_photos(ftp)
-    @files_to_upload.each do |num_copies, files|
+    @photosorter.expand_photo_names.each do |num_copies, files|
       remote_dirs = ftp.ls
       dir_for_photos = get_remote_dir(num_copies)
       make_remote_dir(ftp, num_copies) unless get_short_dir_listing(ftp).include?(dir_for_photos)
@@ -125,8 +125,6 @@ class PhotoUploader
 end
 
 if __FILE__ == $0
-  photosorter = PhotoSorter.new(ARGV[0])
-  # puts "XXX #{photosorter.expand_photo_names.inspect}"
-  photo_uploader = PhotoUploader.new(ARGV[1], photosorter.expand_photo_names)
+  photo_uploader = PhotoUploader.new(ARGV[0], ARGV[1])
   photo_uploader.transfer
 end
