@@ -37,6 +37,7 @@ class PhotoSorter
         end
       end
     end
+    # puts "XXX Expanded photo names: #{expanded_photo_names.inspect}"
     return expanded_photo_names
   end
 

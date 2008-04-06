@@ -22,6 +22,17 @@ class FtpPhotoUploaderTest < Test::Unit::TestCase
     assert(photo_names.key?('3'))
     assert(photo_names.key?('4'))
     assert(!photo_names.key?('5'))
+    one_copy = photo_names['1']
+    assert(one_copy.include?('petrababa/dsc54389.jpg'))
+    assert(one_copy.include?('petrababa/dsc54390.jpg'))
+    assert(photo_names['2'].include?('petrababa/dsc54323.jpg'))
+    assert(photo_names['4'].include?('petrababa/dsc54356.jpg'))
+    assert(one_copy.include?('newyork/dsc02403.jpg'))
+    assert(photo_names['2'].include?('newyork/dsc02413.jpg'))
+    assert(photo_names['3'].include?('newyork/dsc02402.jpg'))
+    assert(one_copy.include?('newyork/dsc03778.jpg'))
+    assert(one_copy.include?('newyork/dsc84934.jpg'))
+    assert(photo_names['3'].include?('newyork/dsc746673.jpg'))
   end
 
 end
