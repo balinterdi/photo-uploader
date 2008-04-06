@@ -1,0 +1,15 @@
+newyork: [
+  {
+  with: dsc024,
+  files: [ 02?3, '03', '07', 13?2 ] },
+  {
+  with: dsc037,
+  files: [ 78, 84?2 ] },
+  {
+  files: [ dsc84934, dsc746673?3 ] }
+]
+petrababa: [
+  {
+  with: dsc543,
+  files: [ 23?2, 56?4, 89, 90 ] }
+]
