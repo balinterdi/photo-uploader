@@ -8,13 +8,13 @@ class PhotoSorter
 
   attr_accessor :photo_data
 
-  def initialize(yaml_file)
+  def initialize(yaml_file=nil)
     @photo_data = nil
     @yaml_file = yaml_file
     @extension = 'jpg'
   end
 
-  def get_photo_data
+  def parse_photo_data
     photo_yaml_data = File.open(@yaml_file) { |f| f.read }
     @photo_data = YAML.load(photo_yaml_data)
   end
@@ -27,8 +27,8 @@ class PhotoSorter
 
   def expand_photo_names
     expanded_photo_names = {}
-    photo_data ||= get_photo_data
-    photo_data.each do |dir_name, photo_data_set|
+    parse_photo_data if @photo_data.nil?
+    @photo_data.each do |dir_name, photo_data_set|
       photo_data_set.each do |photos|
         prefix = photos.fetch('with', nil)
         photos['files'].each do |photo_name|
