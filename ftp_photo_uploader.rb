@@ -2,7 +2,7 @@ require 'yaml'
 require 'find'
 require 'net/ftp'
 
-Debug = true
+Debug = false
 
 class PhotoSorter
 
@@ -30,7 +30,6 @@ class PhotoSorter
     photo_data ||= get_photo_data
     photo_data.each do |dir_name, photo_data_set|
       photo_data_set.each do |photos|
-        # puts "XXX Photos: #{photos.inspect}"
         prefix = photos.fetch('with', nil)
         photos['files'].each do |photo_name|
           photo_fname_and_num_copies = photo_name.to_s.split('?')
@@ -38,18 +37,14 @@ class PhotoSorter
           num_copies = photo_fname_and_num_copies.length > 1 ? photo_fname_and_num_copies[1] : '1'
           expanded_photo_names[num_copies] = [] unless expanded_photo_names.key?(num_copies)
           expanded_photo_names[num_copies] << get_photo_rel_path(dir_name, prefix, photo_fname)
-          # puts "XXX expanded_photo_names: #{expanded_photo_names.inspect}"
         end
       end
     end
-    # puts "XXX Expanded photo names: #{expanded_photo_names.inspect}"
     return expanded_photo_names
   end
 
 end
 
-# given a list of files (with full path), the PhotoUploader
-# uploads these files through an FTP connection
 class PhotoUploader
 
   def initialize(config_file, photos_config_file)
@@ -83,33 +78,45 @@ class PhotoUploader
     ftp.mkdir(get_remote_dir(num_copies))
   end
 
-  def put_photo(ftp, file_name)
-    ftp.putbinaryfile(file_name) do
-      # puts "Transferring photo"
+  def put_photo(ftp, file_name, remote_file_name)
+    transferred_size = 0
+    file_size = File.size(file_name)
+    unless Debug
+      ftp.putbinaryfile(file_name, remote_file_name) do |data|
+        transferred_size += data.size
+        percent = transferred_size.to_f / file_size  * 100
+        printf("Transfered : %i/%i (%.2f%%) \r", transferred_size, file_size, percent)
+        $stdout.flush
+      end
     end
+    puts
   end
 
   def get_short_dir_listing(ftp)
     ftp.ls.collect { |f| f.split.last }
   end
 
-  def basename(file_name)
-    file_name.split('/').last
-  end
-
   def put_photos(ftp)
-    @photosorter.expand_photo_names.each do |num_copies, files|
+    file_names = @photosorter.expand_photo_names
+    num_files = file_names.values.inject(0) { |sum, f| sum + f.length }
+    puts "#{num_files} files to transfer"
+    i = 1
+    file_names.each do |num_copies, files|
       remote_dirs = ftp.ls
       dir_for_photos = get_remote_dir(num_copies)
       make_remote_dir(ftp, num_copies) unless get_short_dir_listing(ftp).include?(dir_for_photos)
       ftp.chdir(dir_for_photos)
+      puts "Changing to directory #{dir_for_photos}"
+      # puts "Starting transferring #{files.length} files"
       files.each do |file_name|
-        if get_short_dir_listing(ftp).include?(basename(file_name))
-          puts "Skipping existing #{file_name}"
+        if get_short_dir_listing(ftp).include?(File.basename(file_name))
+          puts "Skipping existing #{file_name} #{i}/#{num_files}"
         else
-          puts "Starting to transfer #{file_name}"
-          put_photo(ftp, file_name) unless Debug
+          remote_file_name = i.to_s + "_" + File.basename(file_name)
+          puts "Starting to transfer #{file_name} #{i}/#{num_files}"
+          put_photo(ftp, file_name, remote_file_name)
         end
+        i += 1
       end
       ftp.chdir('..')
     end

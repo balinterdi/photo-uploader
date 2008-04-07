@@ -4,9 +4,9 @@ require 'test/unit'
 class FtpPhotoUploaderTest < Test::Unit::TestCase
 
   def setup
-    @photo_sorter = PhotoSorter.new
+    @photo_sorter = PhotoSorter.new('yaml_file_path')
     @photo_sorter.photo_data = {"petrababa"=>[{"files"=>["23?2", "56?4", 89, 90], "with"=>"dsc543"}], "newyork"=>[{"files"=>["02?3", "03", "07", "13?2"], "with"=>"dsc024"}, {"files"=>[78, "84?2"], "with"=>"dsc037"}, {"files"=>["dsc84934", "dsc746673?3"]}]}
-    @photo_uploader = PhotoUploader.new
+    # @photo_uploader = PhotoUploader.new
   end
 
   def test_get_photo_rel_path
